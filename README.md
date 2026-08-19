@@ -1,18 +1,160 @@
 # Bloody Roar II Recompiled
 
-Static recompilation of **Bloody Roar II** for the Sony PlayStation, built on
-[psxrecomp](https://github.com/mstan/psxrecomp) and
-[recomp-ui](https://github.com/mstan/recomp-ui), targeting a native Windows PC
-port.
+**Native Windows PC port of *Bloody Roar II* for the Sony PlayStation.** The
+game's original MIPS machine code is statically recompiled to C and built into a
+standalone executable — this is a real PC port, not an emulator.
+
+[![Release](https://img.shields.io/github/v/release/novapowers0/BloodyRoar2Recomp?sort=semver&style=flat-square&color=orange&label=Release)](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square)](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
+[![License](https://img.shields.io/github/license/novapowers0/BloodyRoar2Recomp?style=flat-square)](LICENSE)
+[![Stars](https://img.shields.io/github/stars/novapowers0/BloodyRoar2Recomp?style=flat-square&color=yellow)](https://github.com/novapowers0/BloodyRoar2Recomp)
+[![Built with](https://img.shields.io/badge/built%20with-psxrecomp-8A2BE2?style=flat-square)](https://github.com/novapowers0/psxrecomp)
 
 | | |
 |---|---|
-| Players | 2 |
-| Regions | Europe (SLES-01722) + USA (SCUS-94424) |
-| Publisher | Virgin Interactive (EU) / Sony (US) |
-| Year | 1998 (US) / 1999 (EU) |
+| **Players** | 2 (versus) |
+| **Regions** | Europe (SLES-01722) + USA (SCUS-94424) |
+| **Publishers** | Virgin Interactive (EU) / Sony Computer Entertainment (US) |
+| **Year** | 1998 (US) / 1999 (EU) |
+| **Genre** | 3D fighting |
+| **Frameworks** | [psxrecomp](https://github.com/novapowers0/psxrecomp) + [recomp-ui](https://github.com/mstan/recomp-ui) |
 
-## ⚖️ Copyright / Legal
+---
+
+## How to play
+
+1. **Grab a release** — download the zip for your region from
+   [Releases](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
+   (Europe `BloodyRoar2-EU-v0.5.0.zip` or USA `BloodyRoar2-US-v0.5.0.zip`).
+2. **Unzip anywhere** — each zip is self-contained (executable, OpenBIOS,
+   launcher assets and mods included).
+3. **Add your disc image** — put your legally owned *Bloody Roar II* `.bin`/`.cue`
+   (or `.iso` / `.chd`) image beside the folder. The launcher asks for it on
+   first run and remembers it.
+4. **Double-click the exe** and play. A retail `SCPH-1001.BIN` BIOS next to the
+   exe is used if present; otherwise the bundled OpenBIOS is used.
+
+No Python, compiler or setup step is needed to **play** — the recompiled game is
+already compiled inside the executable.
+
+> Each region is a different disc image, so each zip only works with its own
+> region's disc. They are **not** interchangeable.
+
+---
+
+## Mods
+
+Enable them on the launcher's **Mods** tab. All default to **off**, keeping the
+authentic experience — turn on only what you want.
+
+| Mod | What it does | Default |
+|---|---|---|
+| `br2.enhancement.widescreen` | **Real widescreen** (16:9 / 21:9 / Adaptive): widens the 3D fight camera to reveal more of the arena instead of stretching. 2D menus and FMVs stay faithful 4:3. Authored from scratch for Bloody Roar II. | Off |
+| `br2.enhancement.performance` | **Intro FMV skip**: ends the intro movies the game's own way the instant they are detected, so boot reaches the title/attract screen sooner. 2D copyright logos are unaffected. | Off |
+| `psx.enhancement.cd-speed` | **CD Speed**: shortens load times by speeding up the emulated CD drive — without speeding the game up, so timing-based play is not disturbed. | Off |
+| `psx.enhancement.fast-loading` | **Fast Loading**: accelerates the wall-clock pacing of loads. Safe host-side accelerator; the game itself never desyncs. | Off |
+| `psx.enhancement.pgxp` | **PGXP Precision**: sub-pixel vertex precision + perspective-correct texturing. Stops polygon wobble and floor/texture warping. Needs supersampling ≥ 2 to be visible. | Off |
+
+The catalog is **curated**: the framework's Final Bout-specific
+`psx.enhancement.custom-combat` and the generic `psx.enhancement.widescreen`
+stub are excluded from this title.
+
+---
+
+## Widescreen (from scratch)
+
+The widescreen mod widens the **3D fight camera** (not a stretch) using the
+psxrecomp enhancement pattern: a GTE X-squash around OFX plus a final present
+stretch, applied inside the runtime's GTE library so every renderer sees it
+uniformly.
+
+- Fights render hundreds of RTPS/RTPT projections → the GTE-activity detector
+  gates widening to 3D gameplay, and genuine 2D screens stay pillarboxed 4:3.
+- Bloody Roar II's own screen-extent cull signature (`sltiu ...,0x200` paired
+  with `sltiu ...,0x1E0`) is widened at codegen time, so the game's geometry
+  culling stays aligned with the visible frame.
+- Verified safe to squash: the game reads projected SXY only inside the render
+  funnels that are widened — no AI/UI readback to corrupt.
+
+Read **[`WIDESCREEN.md`](WIDESCREEN.md)** for the full technical write-up: the
+binary analysis, how the cull sites were found, and credits (NovaPowers
+framework + mstan methodology + DuckStation ground truth).
+
+---
+
+## Releases
+
+Each release ships **both regions as separate self-contained zips**:
+
+| File | Region | Executable | Disc |
+|---|---|---|---|
+| `BloodyRoar2-EU-v0.5.0.zip` | Europe | `BloodyRoar2_Recompiled.exe` | SLES-01722 |
+| `BloodyRoar2-US-v0.5.0.zip` | USA | `BloodyRoar2_Recompiled_USA.exe` | SCUS-94424 |
+
+No disc data, retail BIOS or pre-generated C is included — you supply your
+legally owned disc image (see [Copyright](#-copyright--legal)).
+
+---
+
+## For developers
+
+### Dual-region build
+
+Both regions coexist in this repo. Each generates its own
+`generated/<serial>_*.c` set and builds its own native exe:
+
+| Region | Serial | Config | Seeds | Build target | EXE |
+|---|---|---|---|---|---|
+| Europe | SLES-01722 | `game.toml` | `seeds/ghidra_funcs.txt` | `psx-runtime` | `BloodyRoar2_Recompiled` |
+| USA | SCUS-94424 | `game_us.toml` | `seeds/ghidra_funcs_us.txt` | `psx-runtime-us` | `BloodyRoar2_Recompiled_USA` |
+
+### Quick start (dev)
+
+```bash
+git submodule update --init --recursive
+./psxrecomp/tools/ci/build_emitters.sh
+python3 psxrecomp/psxrecomp_cli.py generate \
+  --config game.toml --project-root . --disc disc/Bloody\ Roar\ 2\ -\ Bringer\ of\ the\ New\ Age\ \(Europe\).cue
+python3 psxrecomp/psxrecomp_cli.py generate \
+  --config game_us.toml --project-root . --disc disc/Bloody\ Roar\ II\ \(USA\).cue
+cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build-release --target psx-runtime
+cmake --build build-release --target psx-runtime-us
+```
+
+Generate both regions, then build both targets (or just the one you want).
+
+### Folder structure
+
+```text
+BloodyRoar2Recomp/
+├── disc/                # NOT included. Your legal copy of the game (.bin/.cue) — see baserom.md
+├── psxrecomp/           # Runtime + recompiler (submodule)
+├── recomp-ui/           # Launcher UI (submodule)
+├── mods/                # Curated mod catalog (manifests .psxmod)
+├── src/mods/            # Per-title mod plugins (widescreen + FMV skip)
+├── generated/           # NOT included. Recompiled C generated locally from your discs
+├── seeds/               # First-pass seeds of the boot EXEs (EU + US)
+├── tools/               # Utilities (sync_symbols.py)
+├── assets/              # App icon / PNG
+└── scripts/             # Packager
+```
+
+### Symbols
+
+Progressive map: `symbols.toml` → `python3 tools/sync_symbols.py` →
+`psx_symbols.h` (`PSX_FN_*`). See `psxrecomp/docs/SYMBOLS.md`.
+
+### Framework pins
+
+Submodule gitlinks (`psxrecomp`, `recomp-ui`, nested `recomp-net`) are
+authoritative. `framework_pins.txt` is an optional scaffold snapshot; release CI
+logs SHAs with `record_pins.sh` but builds whatever the gitlinks resolve to.
+Bump submodules deliberately — do not float on `main`/`master` in release CI.
+
+---
+
+## Copyright / Legal
 
 **The game and its data are NOT distributed.** You must supply the files from
 your **legally obtained** copy of *Bloody Roar II* (the `.bin` / `.cue` disc
@@ -32,112 +174,4 @@ Unofficial, non-commercial, research and preservation project. Not affiliated
 with or endorsed by Hudson Soft, Sony Computer Entertainment, Virgin
 Interactive, or any rightsholder of Bloody Roar.
 
-## Releases (v0.5.0)
-
-Each release ships **both regions as separate self-contained zips** — drop your
-legally owned disc image beside the folder, double-click the exe and play:
-
-- `BloodyRoar2-EU-v0.5.0.zip` → Europe `BloodyRoar2_Recompiled.exe` (SLES-01722)
-- `BloodyRoar2-US-v0.5.0.zip` → USA `BloodyRoar2_Recompiled_USA.exe` (SCUS-94424)
-
-No disc data, BIOS or pre-generated C is included (see Copyright above). The
-setup-host package (optional) lets players Generate & rebuild from source via the
-in-app wizard.
-
-## Estructura de carpetas
-
-```
-BloodyRoar2Recomp/
-├── disc/                # NO incluido. Tu copia legal del juego (.bin/.cue) — ver baserom.md
-├── psxrecomp/           # Runtime + recompiler (submodule)
-├── recomp-ui/           # Launcher UI (submodule)
-├── mods/                # Manifiestos .psxmod de los mods
-├── generated/           # NO incluido. Código recompilado generado localmente
-├── seeds/               # Seeds de primera pasada de los boot EXE (EU + US)
-├── tools/               # Utilidades (sync_symbols.py)
-├── assets/              # Icono / PNG de la app
-└── scripts/             # Packager
-```
-
-## Dual-region build
-
-Both regions coexist in one repo. Each generates its own `generated/<serial>_*.c`
-set and builds its own native exe:
-
-| Region | Serial | Config | Seeds | Build target | EXE |
-|--------|--------|--------|-------|--------------|-----|
-| Europe | SLES-01722 | `game.toml` | `seeds/ghidra_funcs.txt` | `psx-runtime` | `BloodyRoar2_Recompiled` |
-| USA | SCUS-94424 | `game_us.toml` | `seeds/ghidra_funcs_us.txt` | `psx-runtime-us` | `BloodyRoar2_Recompiled_USA` |
-
-## Quick start (dev)
-
-```bash
-git submodule update --init --recursive
-./psxrecomp/tools/ci/build_emitters.sh
-python3 psxrecomp/psxrecomp_cli.py generate \
-  --config game.toml --project-root . --disc disc/Bloody\ Roar\ 2\ -\ Bringer\ of\ the\ New\ Age\ \(Europe\).cue
-python3 psxrecomp/psxrecomp_cli.py generate \
-  --config game_us.toml --project-root . --disc disc/Bloody\ Roar\ II\ \(USA\).cue
-cmake -S . -B build-release -G Ninja -DCMAKE_BUILD_TYPE=Release
-cmake --build build-release --target psx-runtime
-cmake --build build-release --target psx-runtime-us
-```
-
-Generate both regions, then build both targets (or just the one you want).
-
-## Mods
-
-The Bloody Roar II builds ship a **curated** mod catalog. The framework's
-Final Bout-specific `psx.enhancement.custom-combat` is excluded, and the
-generic framework `psx.enhancement.widescreen` is replaced by a
-**from-scratch** per-title widescreen (`br2.enhancement.widescreen`). A
-per-title performance mod (`br2.enhancement.performance`) auto-skips the intro
-FMVs via the framework's mod-owned FMV-skip API. The remaining generic
-framework mods that make sense for this title are (cd-speed, fast-loading,
-pgxp).
-
-## Widescreen (from scratch)
-
-`br2.enhancement.widescreen` (in `mods/preloaded/packages/`) widens the 3D
-fight camera to 16:9 / 21:9 instead of stretching. It follows the psxrecomp
-enhancement pattern used by Ape Escape / Tomba (mstan): the display aspect is
-selected from the mod package, and the actual FOV widening is declared as
-per-title codegen sites in `game.toml` / `game_us.toml` (`[widescreen]` /
-`[widescreen.cull]`).
-
-- **`gte_game_mode = true`** — fights render RTPS/RTPT projections; 2D menus /
-  FMVs stay pillarboxed 4:3.
-- **`squash = true`** — GTE X-squash around OFX + final stretch (the
-  DuckStation/Beetle hack, applied in the GTE library). Verified safe: BR2
-  reads back projected SXY only inside the render-funnel cull that
-  `auto_screen_x` widens.
-- **`[widescreen.cull] auto_screen_x = true`, `screen_w_imms = [0x200]`,
-  `screen_h_imms = [0x1E0]`** — BR2's screen-extent reject signature
-  (`sltiu ...,0x200` + `sltiu ...,0x1E0`) in the triangle render funnels
-  (0x8018A59C family), overriding the Tomba/Ape defaults.
-
-The cull sites and game-mode gating were derived from disassembly of
-SLES-01722 / SCUS-94424 (see DuckStation's `0x1333` projection-width cheat for
-ground truth). The framework enhancement infrastructure (GTE X-squash /
-native-wide compositor, `psx_mod_set_fixed_display_aspect`) is by
-**NovaPowers** (psxrecomp nova-mods); the per-title wiring and BR2 cull sites
-are original to this project.
-
-Enable it in the launcher Mods tab (default off; the faithful 4:3 floor).
-
-See **[`WIDESCREEN.md`](WIDESCREEN.md)** for the full technical write-up: how
-the FOV widening works, the binary analysis that found the cull sites, and the
-credits (NovaPowers framework + mstan methodology + DuckStation ground truth).
-
-## Symbols
-
-Progressive map: `symbols.toml` → `python3 tools/sync_symbols.py` →
-`psx_symbols.h` (`PSX_FN_*`). See `psxrecomp/docs/SYMBOLS.md`.
-
-## Framework pins
-
-Submodule gitlinks (`psxrecomp`, `recomp-ui`, nested `recomp-net`,
-`retcomm-rbengine`) are authoritative. `framework_pins.txt` is an optional
-scaffold snapshot; release CI logs SHAs with `record_pins.sh` but builds
-whatever the gitlinks resolve to. Bump submodules deliberately — do not float
-on `main`/`master` in release CI.
+Released under the **MIT License** — see [`LICENSE`](LICENSE).
