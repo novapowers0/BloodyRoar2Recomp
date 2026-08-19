@@ -1,11 +1,11 @@
 # Bloody Roar II Recompiled
 
-**Native Windows PC port of *Bloody Roar II* for the Sony PlayStation.** The
-game's original MIPS machine code is statically recompiled to C and built into a
-standalone executable — this is a real PC port, not an emulator.
+**Native PC port of *Bloody Roar II* for the Sony PlayStation (Windows + Linux).**
+The game's original MIPS machine code is statically recompiled to C and built
+into a standalone executable — this is a real PC port, not an emulator.
 
 [![Release](https://img.shields.io/github/v/release/novapowers0/BloodyRoar2Recomp?sort=semver&style=flat-square&color=orange&label=Release)](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
-[![Platform](https://img.shields.io/badge/Platform-Windows-0078D6?style=flat-square)](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
+[![Platform](https://img.shields.io/badge/Platform-Windows_|_Linux-0078D6?style=flat-square)](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
 [![License](https://img.shields.io/github/license/novapowers0/BloodyRoar2Recomp?style=flat-square)](LICENSE)
 [![Stars](https://img.shields.io/github/stars/novapowers0/BloodyRoar2Recomp?style=flat-square&color=yellow)](https://github.com/novapowers0/BloodyRoar2Recomp)
 [![Built with](https://img.shields.io/badge/built%20with-psxrecomp-8A2BE2?style=flat-square)](https://github.com/novapowers0/psxrecomp)
@@ -23,16 +23,18 @@ standalone executable — this is a real PC port, not an emulator.
 
 ## How to play
 
-1. **Grab a release** — download the zip for your region from
+1. **Grab a release** — download the zip for your region and OS from
    [Releases](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
-   (Europe `BloodyRoar2-EU-v0.5.0.zip` or USA `BloodyRoar2-US-v0.5.0.zip`).
+   (Windows `BloodyRoar2-EU-v0.5.0.zip` / `BloodyRoar2-US-v0.5.0.zip`, or the
+   `...-Linux-v0.5.0.zip` variants).
 2. **Unzip anywhere** — each zip is self-contained (executable, OpenBIOS,
    launcher assets and mods included).
 3. **Add your disc image** — put your legally owned *Bloody Roar II* `.bin`/`.cue`
    (or `.iso` / `.chd`) image beside the folder. The launcher asks for it on
    first run and remembers it.
-4. **Double-click the exe** and play. A retail `SCPH-1001.BIN` BIOS next to the
-   exe is used if present; otherwise the bundled OpenBIOS is used.
+4. **Play**: double-click the `.exe` on Windows, or `./BloodyRoar2_Recompiled`
+   (chmod +x first) on Linux. A retail `SCPH-1001.BIN` BIOS next to the
+   executable is used if present; otherwise the bundled OpenBIOS is used.
 
 No Python, compiler or setup step is needed to **play** — the recompiled game is
 already compiled inside the executable.
