@@ -124,6 +124,24 @@ cmake --build build-release --target psx-runtime-us
 
 Generate both regions, then build both targets (or just the one you want).
 
+### Linux builds
+
+The whole stack is multi-platform (SDL windowing/audio, OpenGL + Vulkan
+renderers, POSIX sockets). CI builds a Linux setup-host on every push —
+see [`.github/workflows/linux-build.yml`](.github/workflows/linux-build.yml)
+(`br2-<version>-linux-x64` artifact). Building the game executable on Linux
+uses the same flow as above; deps on Debian/Ubuntu:
+
+```bash
+sudo apt install build-essential cmake ninja-build pkg-config \
+     libsdl2-dev libgl1-mesa-dev libvulkan-dev libxtst-dev glslc
+cmake -S . -B build-linux -G Ninja -DCMAKE_BUILD_TYPE=Release
+cmake --build build-linux --target psx-runtime psx-runtime-us
+```
+
+CI never ships game C — the recompiled game code is generated locally by each
+player from their legally owned disc.
+
 ### Folder structure
 
 ```text

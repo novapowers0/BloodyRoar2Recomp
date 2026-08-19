@@ -1,0 +1,166 @@
+# Linux build (setup-host) for Bloody Roar II Recompiled.
+#
+# CI never ships game C: the recompiled game code is generated locally by each
+# player from their legally owned disc (see Copyright in README). This workflow
+# proves the whole toolchain (recompiler + runtime + recomp-ui + mods) compiles
+# and packages on Linux, and uploads the `br2-<version>-linux-x64` setup zip
+# (launcher + Generate & rebuild wizard) as a build artifact.
+#
+# Based on the shared psxrecomp template: psxrecomp/docs/ci/templates/setup-release.yml
+
+name: Linux build
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for the artifact (e.g. 0.5.0). Empty = use VERSION file.'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: linux-build-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: linux-x64
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (submodules are the framework pin)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ github.event.inputs.version }}"
+          if [[ -z "${RAW}" ]]; then
+            RAW="$(tr -d '[:space:]' <VERSION)"
+          fi
+          VER="${RAW#v}"
+          if [[ ! "${VER}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-][A-Za-z0-9.+-]*)?$ ]]; then
+            echo "::error::invalid version '${RAW}' (want X.Y.Z or vX.Y.Z)"
+            exit 1
+          fi
+          printf '%s\n' "${VER}" >VERSION
+          echo "version=${VER}" >>"$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=${VER}" >>"$GITHUB_ENV"
+          echo "Using version ${VER}"
+
+      - name: Record framework revisions
+        shell: bash
+        run: bash psxrecomp/tools/ci/record_pins.sh
+
+      - name: Setup host mode (no game C / BIOS backends in CI)
+        shell: bash
+        run: bash psxrecomp/tools/ci/clear_generated.sh
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libsdl2-dev libgl1-mesa-dev libxtst-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxkbcommon-dev \
+            libasound2-dev libpulse-dev libudev-dev zip \
+            libvulkan-dev glslc ccache
+
+      - name: Cache SDL3 source
+        uses: actions/cache@v4
+        with:
+          path: .cache/sdl3-src
+          key: sdl3-3.4.10-src
+
+      - name: Prefetch SDL3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=".cache/sdl3-src"
+          if [[ -f "${OUT}/CMakeLists.txt" ]]; then
+            echo "SDL3 source cache hit"
+          else
+            bash psxrecomp/tools/ci/prefetch_sdl3.sh --out-dir "${OUT}"
+          fi
+          echo "PSX_SDL3_SOURCE_DIR=${GITHUB_WORKSPACE}/${OUT}" >>"$GITHUB_ENV"
+
+      - name: Build recompiler tools (emitters)
+        uses: ./psxrecomp/.github/actions/build-emitters
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-setup-host-${{ steps.version.outputs.version }}
+          max-size: 800M
+
+      - name: Configure & build setup host
+        shell: bash
+        env:
+          VULKAN_SDK: /usr
+        run: |
+          set -euo pipefail
+          EXTRA=(-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
+          if command -v glslc >/dev/null 2>&1; then
+            EXTRA+=("-DGLSLC_EXE=$(command -v glslc)")
+          fi
+          EXTRA+=("-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}")
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPSXRECOMP_FORCE_SETUP_HOST=ON \
+            -DPSXRECOMP_ALLOW_NO_BIOS=ON \
+            -DPSX_SETUP_WIZARD=ON \
+            -DPSX_GAME_VERSION="${RELEASE_VERSION}" \
+            "${EXTRA[@]}" 2>&1 | tee build-ci-configure.log
+          if ! grep -q 'Vulkan backend: headers' build-ci-configure.log; then
+            echo "::error::CMake did not enable PSX_HAVE_VULKAN (see configure log)"
+            exit 1
+          fi
+          cmake --build build-ci --target psx-runtime -j"$(nproc)"
+
+      - name: Verify version pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAMP="$(find build-ci -name psx_game_version.txt -type f | head -n1)"
+          if [[ -z "${STAMP}" || ! -f "${STAMP}" ]]; then
+            echo "::error::missing psx_game_version.txt after build (update psxrecomp submodule)"
+            exit 1
+          fi
+          BUILT="$(tr -d '[:space:]' <"${STAMP}")"
+          BUILT="${BUILT#v}"
+          if [[ "${BUILT}" != "${RELEASE_VERSION}" ]]; then
+            echo "::error::version pin ${BUILT} != ${RELEASE_VERSION} (${STAMP})"
+            exit 1
+          fi
+          echo "lobby pin ok: ${BUILT} (${STAMP})"
+
+      - name: Package setup zip (linux-x64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package_setup_release.sh
+          export RELEASE_VERSION
+          scripts/package_setup_release.sh build-ci linux-x64 build-recompiler
+          ls -la dist/
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: br2-linux-x64
+          path: dist/br2-*-linux-x64.zip
+          if-no-files-found: error
+          retention-days: 30
