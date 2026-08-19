@@ -90,9 +90,11 @@ Generate both regions, then build both targets (or just the one you want).
 The Bloody Roar II builds ship a **curated** mod catalog. The framework's
 Final Bout-specific `psx.enhancement.custom-combat` is excluded, and the
 generic framework `psx.enhancement.widescreen` is replaced by a
-**from-scratch** per-title widescreen (`br2.enhancement.widescreen`). Only
-generic framework mods that make sense for this title remain (cd-speed,
-fast-loading, pgxp).
+**from-scratch** per-title widescreen (`br2.enhancement.widescreen`). A
+per-title performance mod (`br2.enhancement.performance`) auto-skips the intro
+FMVs via the framework's mod-owned FMV-skip API. The remaining generic
+framework mods that make sense for this title are (cd-speed, fast-loading,
+pgxp).
 
 ## Widescreen (from scratch)
 
