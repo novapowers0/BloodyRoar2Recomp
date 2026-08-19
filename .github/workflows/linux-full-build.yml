@@ -128,6 +128,23 @@ jobs:
           key: linux-full-${{ steps.version.outputs.version }}
           max-size: 800M
 
+      - name: Build BIOS recompiler (emitter)
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S psxrecomp/recompiler -B psxrecomp/recompiler/build -G Ninja -DCMAKE_BUILD_TYPE=Release
+          cmake --build psxrecomp/recompiler/build --target psxrecomp-bios -j"$(nproc)"
+
+      - name: Regenerate OpenBIOS backend (MIT, no BIOS dump needed)
+        shell: bash
+        run: |
+          set -euo pipefail
+          (cd psxrecomp && bash tools/regen_bios.sh --config bios/OpenBIOS.toml)
+          ls -1 psxrecomp/generated/OpenBIOS_* | head
+          test -f psxrecomp/generated/OpenBIOS_full.c || { echo "::error::OpenBIOS_full.c not generated"; exit 1; }
+          test -f psxrecomp/generated/OpenBIOS_dispatch.c || { echo "::error::OpenBIOS_dispatch.c not generated"; exit 1; }
+          echo "OpenBIOS backend regenerated"
+
       - name: Configure full game build
         shell: bash
         env:
