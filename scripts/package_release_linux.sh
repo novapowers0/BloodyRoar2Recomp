@@ -69,6 +69,7 @@ package() { # package <exe-name> <config-file> <folder-name> <display-name>
   cp -a "${BUILD_DIR}/assets" "${out}/assets"
 
   # Curated mod catalog.
+  mkdir -p "${out}/mods"
   cp -a "${BUILD_DIR}/mods/packages" "${out}/mods/packages"
 
   # Game configs.
