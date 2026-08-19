@@ -1,0 +1,194 @@
+# Linux FULL (ready-to-play) build for Bloody Roar II Recompiled.
+#
+# Unlike the "setup-host" build (which ships only the launcher + Generate &
+# rebuild wizard), this workflow produces the complete game binaries with the
+# recompiled game code compiled in - the Linux equivalent of the Windows zips:
+# download -> pick your disc -> play. No toolchain needed on the player side.
+#
+# The recompiled game C (generated/SLES_017.22_*.c + SCUS_944.24_*.c) is
+# derived from the game's copyrighted disc, so it is NEVER committed to this
+# public repo. It is injected at build time from a PRIVATE repository via a
+# secret PAT (see the README / Actions setup notes). The OpenBIOS backend is
+# open-source (MIT) and ships inside the psxrecomp submodule.
+#
+# Manual trigger only (heavy build; requires the generated-repo secret).
+
+name: Linux full build (ready-to-play)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version for the artifacts (e.g. 0.5.0). Empty = use VERSION file.'
+        required: false
+        type: string
+        default: ''
+
+concurrency:
+  group: linux-full-build-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  actions: write
+
+env:
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: linux-x64 ready-to-play
+    runs-on: ubuntu-24.04
+    steps:
+      - name: Checkout (submodules are the framework pin)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ github.event.inputs.version }}"
+          if [[ -z "${RAW}" ]]; then
+            RAW="$(tr -d '[:space:]' <VERSION)"
+          fi
+          VER="${RAW#v}"
+          if [[ ! "${VER}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-][A-Za-z0-9.+-]*)?$ ]]; then
+            echo "::error::invalid version '${RAW}' (want X.Y.Z or vX.Y.Z)"
+            exit 1
+          fi
+          printf '%s\n' "${VER}" >VERSION
+          echo "version=${VER}" >>"$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=${VER}" >>"$GITHUB_ENV"
+          echo "Using version ${VER}"
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential cmake ninja-build pkg-config \
+            libsdl2-dev libgl1-mesa-dev libxtst-dev \
+            libx11-dev libxext-dev libxrandr-dev libxcursor-dev \
+            libxfixes-dev libxi-dev libxss-dev libxkbcommon-dev \
+            libasound2-dev libpulse-dev libudev-dev zip \
+            libvulkan-dev glslc ccache
+
+      - name: Cache SDL3 source
+        uses: actions/cache@v4
+        with:
+          path: .cache/sdl3-src
+          key: sdl3-3.4.10-src
+
+      - name: Prefetch SDL3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=".cache/sdl3-src"
+          if [[ -f "${OUT}/CMakeLists.txt" ]]; then
+            echo "SDL3 source cache hit"
+          else
+            bash psxrecomp/tools/ci/prefetch_sdl3.sh --out-dir "${OUT}"
+          fi
+          echo "PSX_SDL3_SOURCE_DIR=${GITHUB_WORKSPACE}/${OUT}" >>"$GITHUB_ENV"
+
+      - name: Restore game generated C from private repo
+        shell: bash
+        env:
+          GENERATED_REPO: ${{ secrets.GENERATED_REPO }}
+          GENERATED_REPO_PAT: ${{ secrets.GENERATED_REPO_PAT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GENERATED_REPO:-}" || -z "${GENERATED_REPO_PAT:-}" ]]; then
+            echo "::error::secrets GENERATED_REPO / GENERATED_REPO_PAT are not set." >&2
+            echo "::error::Create a private repo with the game generated C and add a PAT secret." >&2
+            exit 1
+          fi
+          rm -rf generated
+          git clone --depth 1 \
+            "https://x-access-token:${GENERATED_REPO_PAT}@github.com/${GENERATED_REPO}.git" \
+            generated
+          rm -rf generated/.git
+          echo "restored game generated C:"
+          ls generated | sed -n '1,6p'
+
+      - name: Verify game generated C present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -f generated/SLES_017.22_dispatch.c || { echo "::error::missing SLES_017.22_dispatch.c"; exit 1; }
+          test -f generated/SCUS_944.24_dispatch.c || { echo "::error::missing SCUS_944.24_dispatch.c"; exit 1; }
+          echo "game generated C restored and verified"
+
+      - name: Setup ccache
+        uses: hendrikmuhs/ccache-action@v1.2
+        with:
+          key: linux-full-${{ steps.version.outputs.version }}
+          max-size: 800M
+
+      - name: Configure full game build
+        shell: bash
+        env:
+          VULKAN_SDK: /usr
+        run: |
+          set -euo pipefail
+          EXTRA=(-DCMAKE_C_COMPILER_LAUNCHER=ccache -DCMAKE_CXX_COMPILER_LAUNCHER=ccache)
+          if command -v glslc >/dev/null 2>&1; then
+            EXTRA+=("-DGLSLC_EXE=$(command -v glslc)")
+          fi
+          EXTRA+=("-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}")
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPSX_SETUP_WIZARD=ON \
+            -DPSX_GAME_VERSION="${RELEASE_VERSION}" \
+            "${EXTRA[@]}" 2>&1 | tee build-ci-configure.log
+          if ! grep -q 'Vulkan backend: headers' build-ci-configure.log; then
+            echo "::error::CMake did not enable PSX_HAVE_VULKAN (see configure log)"
+            exit 1
+          fi
+
+      - name: Build game binaries
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build build-ci --target psx-runtime -j"$(nproc)"
+          cmake --build build-ci --target psx-runtime-us -j"$(nproc)"
+
+      - name: Verify binaries and version pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -x build-ci/BloodyRoar2_Recompiled || { echo "::error::EU binary missing"; exit 1; }
+          test -x build-ci/BloodyRoar2_Recompiled_USA || { echo "::error::US binary missing"; exit 1; }
+          file build-ci/BloodyRoar2_Recompiled build-ci/BloodyRoar2_Recompiled_USA
+          for d in build-ci build-ci/Release; do
+            if [[ -f "${d}/psx_game_version.txt" ]]; then
+              BUILT="$(tr -d '[:space:]' <"${d}/psx_game_version.txt")"
+              BUILT="${BUILT#v}"
+              if [[ "${BUILT}" != "${RELEASE_VERSION}" ]]; then
+                echo "::error::version pin ${BUILT} != ${RELEASE_VERSION}"
+                exit 1
+              fi
+              echo "version pin ok: ${BUILT} (${d})"
+            fi
+          done
+
+      - name: Package Linux release zips (ready-to-play)
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package_release_linux.sh
+          scripts/package_release_linux.sh build-ci "${RELEASE_VERSION}"
+          ls -la dist/
+
+      - name: Upload Linux artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: br2-linux-ready-to-play
+          path: |
+            dist/BloodyRoar2-EU-linux-x64-*.zip
+            dist/BloodyRoar2-US-linux-x64-*.zip
+          if-no-files-found: error
+          retention-days: 30
