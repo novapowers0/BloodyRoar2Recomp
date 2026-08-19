@@ -1,0 +1,20 @@
+# Auto detect text files and perform LF normalization
+* text=auto
+
+# Scripts and docs: normalize to LF
+*.py text eol=lf
+*.md text eol=lf
+*.sh text eol=lf
+*.h text eol=lf
+*.cpp text eol=lf
+*.c text eol=lf
+*.toml text eol=lf
+
+# Binary / game data files: keep as-is
+*.exe binary
+*.dll binary
+*.bin binary
+*.cue binary
+*.iso binary
+*.so binary
+*.dylib binary

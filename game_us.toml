@@ -1,0 +1,76 @@
+# Bloody Roar II — USA (SCUS-94424), secondary region.
+# Separate config so each region is generated with its own boot EXE + seeds
+# into generated/ (SCUS_944.24_* vs SLES_017.22_*) and built as its own exe.
+
+[game]
+name = "Bloody Roar II (USA)"
+id = "SCUS-94424"
+players = 2
+exe = "disc/SCUS_944.24"
+disc = "disc/Bloody Roar II (USA).cue"
+load_address = "0x8011E800"
+entry_pc = "0x80126174"
+text_size = "0x000A0800"
+stack_base = "0x801FFFF0"
+
+# Digests are for data Track 01 (first BINARY FILE / TRACK 01).
+[prepare_disc]
+out_dir = "disc"
+bin_name = "Bloody Roar II (USA).bin"
+cue_name = "Bloody Roar II (USA).cue"
+boot_exe = "SCUS_944.24"
+known_sizes = [552729408]
+known_md5 = [
+  "fa5b8e192dbfef77fb2fe3416a1b9469",
+]
+known_sha1 = [
+  "75a13364ae026fe555e9c666c7c3434e5b403cc8",
+]
+
+[recompiler]
+seeds = "seeds/ghidra_funcs_us.txt"
+out_dir = "generated"
+strict = true
+
+[runtime]
+window_title = "Bloody Roar II Recompiled (USA)"
+memcard_dir = "saves"
+# Fast Boot (QoL): the framework's HLE boot-skip jumps straight from kernel
+# init to the game EXE, skipping the BIOS/PlayStation intro. Complements the
+# Skip Intro FMVs mod. Set to false to play the authentic BIOS boot.
+bios_hle = true
+
+[video]
+renderer = "opengl"
+# Authentic 4:3 is the baseline. Bloody Roar II's widescreen is offered through
+# its own mod catalog (br2.enhancement.widescreen), not a generic Video row.
+aspect_ratio = "4:3"
+
+# --- Bloody Roar II widescreen (authored from scratch for this title) ------
+# Same per-title sites as game.toml (the render funnels share VAs across the
+# EU/US builds); only the projection struct base differs, which the generic
+# GTE squash handles.
+[widescreen]
+gte_game_mode = true
+squash = true
+native_wide = false
+precise_nclip = true
+offer = true
+offer_ultrawide = true
+adaptive_view = true
+
+[widescreen.cull]
+auto_screen_x = true
+screen_w_imms = ["0x200"]
+screen_h_imms = ["0x1E0"]
+
+[controller]
+default_mode = "digital"
+lock_mode = true
+
+# Online mount gate: digests + track count + optional TOC fingerprint
+# (see docs/NETPLAY.md).
+[netplay]
+require_cue = true
+required_tracks = 1
+required_disc_fp = "ab77cc9d3318b0ef7eda01cda8c65cf92d7a5c329f80ff5b03c2dc52ce3b1d1f"

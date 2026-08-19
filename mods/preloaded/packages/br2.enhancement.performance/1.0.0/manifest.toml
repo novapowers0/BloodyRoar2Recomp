@@ -1,0 +1,32 @@
+format_version = 5
+id = "br2.enhancement.performance"
+version = "1.0.0"
+name = "Bloody Roar II Intro Skip"
+author = "NovaPowers"
+description = "Automatic skipping of Bloody Roar II's intro FMVs so boot reaches the attract / title sooner, built on the psxrecomp mod-owned FMV-skip API."
+resolver = "declarative"
+save_compatibility = "shared"
+
+# Both regions of Bloody Roar II are covered. Auto-skip FMV is presentation
+# only: it ends intro movies the game's own way the instant a streaming FMV is
+# detected, so guest VBlank, game logic, physics, timers and audio are never
+# touched. 2D copyright logos are not videos and are left unaffected.
+
+[[target]]
+game_id = "SLES-01722"
+disc_sha256 = "d3381cc458c16347ea8180386483c42130cb2969f1f818bd76ac7c678d3ee0b8"
+
+[[target]]
+game_id = "SCUS-94424"
+disc_sha256 = "fbad8aef53b160abfcebddced9f9d69dcf39df00d8853b4c11f231b37220fc57"
+
+[[feature]]
+id = "fmv-skip"
+name = "Skip Intro FMVs"
+description = "Automatically skip the intro video / FMV sequences (e.g. the opening) so boot reaches the attract / title sooner. Skips the movie the game's own way the instant a streaming FMV is detected; 2D copyright logos are not videos and are not affected."
+group = "Quality of Life"
+default_enabled = false
+
+[[plugin]]
+feature = "fmv-skip"
+id = "br2.enhancement.fmv-skip"

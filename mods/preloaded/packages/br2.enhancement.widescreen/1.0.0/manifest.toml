@@ -1,0 +1,64 @@
+format_version = 5
+id = "br2.enhancement.widescreen"
+version = "1.0.0"
+name = "Bloody Roar II Widescreen"
+author = "NovaPowers"
+description = "Renders Bloody Roar II with a wider field of view using the game's projection and cull hooks authored for this title (see game.toml [widescreen])."
+resolver = "declarative"
+save_compatibility = "shared"
+
+# Both regions of Bloody Roar II are covered by this package. The GTE squash +
+# present-stretch widescreen path is chosen over a RAM/GPU projection patch
+# (DuckStation's 0x1333 hack) because it covers every renderer uniformly and
+# keeps the game's screen-bounds culls aligned via the codegen cull sites.
+
+[[target]]
+game_id = "SLES-01722"
+disc_sha256 = "d3381cc458c16347ea8180386483c42130cb2969f1f818bd76ac7c678d3ee0b8"
+
+[[target]]
+game_id = "SCUS-94424"
+disc_sha256 = "fbad8aef53b160abfcebddced9f9d69dcf39df00d8853b4c11f231b37220fc57"
+
+[[feature]]
+id = "widescreen"
+name = "Widescreen"
+description = "Enable Bloody Roar II's widescreen rendering and choose a fixed or resize-driven aspect."
+group = "Display"
+default_enabled = false
+
+[[option]]
+feature = "widescreen"
+id = "aspect"
+label = "Aspect ratio"
+description = "Adaptive follows the live window size from 4:3 through 21:9."
+group = "Display"
+type = "choice"
+default = "16:9"
+
+[[option.choice]]
+value = "16:9"
+label = "16:9"
+
+[[option.choice]]
+value = "21:9"
+label = "21:9"
+
+[[option.choice]]
+value = "adaptive"
+label = "Adaptive"
+
+[[plugin]]
+feature = "widescreen"
+id = "br2.widescreen.16-9"
+when = { aspect = "16:9" }
+
+[[plugin]]
+feature = "widescreen"
+id = "br2.widescreen.21-9"
+when = { aspect = "21:9" }
+
+[[plugin]]
+feature = "widescreen"
+id = "br2.widescreen.adaptive"
+when = { aspect = "adaptive" }

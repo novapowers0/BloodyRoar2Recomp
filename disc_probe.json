@@ -1,0 +1,29 @@
+{
+  "cue_path": "C:\\Users\\javie\\Desktop\\PROYECTOS IA\\Bloody Roar 2\\disc\\Bloody Roar 2 - Bringer of the New Age (Europe).cue",
+  "cue_name": "Bloody Roar 2 - Bringer of the New Age (Europe).cue",
+  "bin_name": "Bloody Roar 2 - Bringer of the New Age (Europe).bin",
+  "track_count": 1,
+  "data_track_size": 553651392,
+  "data_track_md5": "fb75a0fdf977a3eccc48fdc87286b0ef",
+  "data_track_sha1": "c6021ee7817cdd3dba3e2cf8238054a7943aa5be",
+  "boot_exe": "SLES_017.22",
+  "serial": "SLES-01722",
+  "serial_exe": "SLES_017.22",
+  "volume_id": "SLES_01722",
+  "display_name": "BloodyRoar2",
+  "load_address": "0x8011E800",
+  "entry_pc": "0x80126178",
+  "text_size": "0x000A0800",
+  "stack_base": "0x801FFFF0",
+  "require_cue": true,
+  "required_disc_fp": "5b72f1bcc61605c96f418b32d3650025fdd331d4ed38061e7f398f267cf9d971",
+  "seed_count": 1011,
+  "warnings": [
+    "cue has only 1 TRACK \u2014 Track-01-only dumps fail multi-track netplay/catalog gates; prefer a full Redump cue."
+  ],
+  "notes": [
+    "entry_pc/load_address/text_size/stack_base taken from PS-X EXE header.",
+    "seeds are first-pass boot-EXE JAL targets (+ entry); expect to grow as overlays / runtime paths are discovered.",
+    "required_disc_fp is psxrecomp-toc-v1 (matches runtime DiscIdentity)."
+  ]
+}

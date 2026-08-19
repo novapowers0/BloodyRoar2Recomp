@@ -1,0 +1,3 @@
+psxrecomp=f2bb059d8c0f02e155dbcf00420c878334b09f5d
+recomp-ui=8e385a0bff407e379414ba5ccbbcde1fac27e5cd
+recomp-net=02c29e6ac7a5d2eb604cf497f8613f6a36e47cc1

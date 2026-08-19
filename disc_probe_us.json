@@ -1,0 +1,29 @@
+{
+  "cue_path": "C:\\Users\\javie\\Desktop\\PROYECTOS IA\\Bloody Roar 2\\disc\\Bloody Roar II (USA).cue",
+  "cue_name": "Bloody Roar II (USA).cue",
+  "bin_name": "Bloody Roar II (USA).bin",
+  "track_count": 1,
+  "data_track_size": 552729408,
+  "data_track_md5": "fa5b8e192dbfef77fb2fe3416a1b9469",
+  "data_track_sha1": "75a13364ae026fe555e9c666c7c3434e5b403cc8",
+  "boot_exe": "SCUS_944.24",
+  "serial": "SCUS-94424",
+  "serial_exe": "SCUS_944.24",
+  "volume_id": "SCUS_94424",
+  "display_name": "BloodyRoar2",
+  "load_address": "0x8011E800",
+  "entry_pc": "0x80126174",
+  "text_size": "0x000A0800",
+  "stack_base": "0x801FFFF0",
+  "require_cue": true,
+  "required_disc_fp": "ab77cc9d3318b0ef7eda01cda8c65cf92d7a5c329f80ff5b03c2dc52ce3b1d1f",
+  "seed_count": 1010,
+  "warnings": [
+    "cue has only 1 TRACK \u2014 Track-01-only dumps fail multi-track netplay/catalog gates; prefer a full Redump cue."
+  ],
+  "notes": [
+    "entry_pc/load_address/text_size/stack_base taken from PS-X EXE header.",
+    "seeds are first-pass boot-EXE JAL targets (+ entry); expect to grow as overlays / runtime paths are discovered.",
+    "required_disc_fp is psxrecomp-toc-v1 (matches runtime DiscIdentity)."
+  ]
+}

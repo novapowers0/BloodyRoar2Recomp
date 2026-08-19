@@ -1,0 +1,18 @@
+# Bloody Roar II — progressive symbol map (partial decomp).
+# Discover → label here → manipulate via PSX_FN_* (tools/sync_symbols.py).
+# Gate emit=true only when the entry is safe to own for AOT / host hooks.
+# See psxrecomp/docs/SYMBOLS.md.
+
+[[func]]
+pc = 0x80126178
+name = "BootEntry"
+emit = false
+status = "guessed"
+note = "SLES-01722 (Europe) boot EXE entry PC (probe seed)"
+
+[[func]]
+pc = 0x80126174
+name = "BootEntryUsa"
+emit = false
+status = "guessed"
+note = "SCUS-94424 (USA) boot EXE entry PC (probe seed)"

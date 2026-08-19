@@ -1,0 +1,98 @@
+# Bloody Roar II — Europe (SLES-01722), primary region.
+# Autofilled by tools/new_project_layout/probe_disc.py from the legal dump.
+# Dual-region setup: see game_us.toml for the USA build (SCUS-94424).
+
+[game]
+name = "Bloody Roar II (Europe)"
+id = "SLES-01722"
+players = 2
+exe = "disc/SLES_017.22"
+disc = "disc/Bloody Roar 2 - Bringer of the New Age (Europe).cue"
+load_address = "0x8011E800"
+entry_pc = "0x80126178"
+text_size = "0x000A0800"
+stack_base = "0x801FFFF0"
+
+# Digests are for data Track 01 (first BINARY FILE / TRACK 01).
+[prepare_disc]
+out_dir = "disc"
+bin_name = "Bloody Roar 2 - Bringer of the New Age (Europe).bin"
+cue_name = "Bloody Roar 2 - Bringer of the New Age (Europe).cue"
+boot_exe = "SLES_017.22"
+known_sizes = [553651392]
+known_md5 = [
+  "fb75a0fdf977a3eccc48fdc87286b0ef",
+]
+known_sha1 = [
+  "c6021ee7817cdd3dba3e2cf8238054a7943aa5be",
+]
+
+[recompiler]
+seeds = "seeds/ghidra_funcs.txt"
+out_dir = "generated"
+strict = true
+
+[runtime]
+window_title = "Bloody Roar II Recompiled"
+memcard_dir = "saves"
+# Fast Boot (QoL): the framework's HLE boot-skip jumps straight from kernel
+# init to the game EXE, skipping the BIOS/PlayStation intro. Complements the
+# Skip Intro FMVs mod. Set to false to play the authentic BIOS boot.
+bios_hle = true
+
+[video]
+renderer = "opengl"
+# Authentic 4:3 is the baseline. Bloody Roar II's widescreen is offered through
+# its own mod catalog (br2.enhancement.widescreen), not a generic Video row.
+aspect_ratio = "4:3"
+
+# --- Bloody Roar II widescreen (authored from scratch for this title) ------
+# Follows the psxrecomp enhancement pattern used by Ape Escape / Tomba (mstan):
+# the display aspect is selected from the game's mod package, and the actual
+# FOV widening is declared here as codegen sites. These are BR2-specific,
+# derived from disassembly of SLES_017.22 / SCUS_944.24 (not inherited from
+# any other title).
+[widescreen]
+# Fight frames render hundreds of RTPS/RTPT projections; 2D menus /
+# character-select / options never touch the GTE, so the GTE-activity detector
+# gates 3D-only widening and pillarboxes genuine 2D screens.
+gte_game_mode = true
+
+# GTE X-squash around OFX + final wide stretch (the DuckStation/Beetle hack,
+# applied in our GTE library so every RTPS/RTPT caller sees it). Safe here:
+# BR2 reads back projected SXY ONLY inside the render-funnel cull that
+# auto_screen_x widens (verified — no AI/UI/SXY feed exists), so squash=true
+# does not corrupt logic (unlike Dragon Ball Final Bout).
+squash = true
+
+# Use the validated squash+stretch path, not the native-wide compositor
+# (which risks geometry wedges on these Eighting 3D fighting-game funnels).
+native_wide = false
+
+# Full-3D arena fighting means lots of wide-edge geometry clipping at the PS1
+# SXY ±1024 clamp; precise NCLIP avoids clipping artifacts on the widened FOV.
+precise_nclip = true
+
+# Baseline presentation stays faithful 4:3; the mod raises it to 16:9/21:9.
+offer = true
+offer_ultrawide = true
+adaptive_view = true
+
+[widescreen.cull]
+# BR2's screen-extent reject signature is `sltiu ...,0x200` (horizontal) paired
+# with `sltiu ...,0x1E0` (vertical) in the triangle render funnels
+# (0x8018A59C family). Override the Tomba/Ape defaults with these.
+auto_screen_x = true
+screen_w_imms = ["0x200"]
+screen_h_imms = ["0x1E0"]
+
+[controller]
+default_mode = "digital"
+lock_mode = true
+
+# Online mount gate: digests + track count + optional TOC fingerprint
+# (see docs/NETPLAY.md).
+[netplay]
+require_cue = true
+required_tracks = 1
+required_disc_fp = "5b72f1bcc61605c96f418b32d3650025fdd331d4ed38061e7f398f267cf9d971"
