@@ -86,17 +86,22 @@ framework + mstan methodology + DuckStation ground truth).
 
 ## Releases
 
-Each release ships **both regions as separate self-contained zips** for
-**Windows** and **Linux**. All are ready-to-play: the recompiled game code is
-compiled inside the binary — download, unzip, drop your legally owned disc
-image beside it and pick it in the launcher.
+Every release ships the game as **4 self-contained, ready-to-play zips** —
+both regions, for **both Windows and Linux**. No setup, compiler or Python is
+needed: the recompiled game code is already compiled inside the executable.
 
-| File | OS | Region | Executable | Disc |
-|---|---|---|---|---|
-| `BloodyRoar2-EU-v0.5.0.zip` | Windows | Europe | `BloodyRoar2_Recompiled.exe` | SLES-01722 |
-| `BloodyRoar2-US-v0.5.0.zip` | Windows | USA | `BloodyRoar2_Recompiled_USA.exe` | SCUS-94424 |
-| `BloodyRoar2-EU-Linux-v0.5.0.zip` | Linux | Europe | `BloodyRoar2_Recompiled` | SLES-01722 |
-| `BloodyRoar2-US-Linux-v0.5.0.zip` | Linux | USA | `BloodyRoar2_Recompiled_USA` | SCUS-94424 |
+Just download the zip for your region + OS, unzip it anywhere, drop your
+legally owned disc image beside it and pick it in the launcher.
+
+| Zip | OS | Region | Executable |
+|---|---|---|---|
+| `BloodyRoar2-EU-v0.5.0.zip` | Windows | Europe | `BloodyRoar2_Recompiled.exe` |
+| `BloodyRoar2-US-v0.5.0.zip` | Windows | USA | `BloodyRoar2_Recompiled_USA.exe` |
+| `BloodyRoar2-EU-Linux-v0.5.0.zip` | **Linux** | Europe | `BloodyRoar2_Recompiled` |
+| `BloodyRoar2-US-Linux-v0.5.0.zip` | **Linux** | USA | `BloodyRoar2_Recompiled_USA` |
+
+> On Linux, `chmod +x BloodyRoar2_Recompiled` and run it — the zips are named
+> `...-Linux-...` and drop the `.exe` extension.
 
 No disc data, retail BIOS or pre-generated C is included — you supply your
 legally owned disc image (see [Copyright](#-copyright--legal)).
