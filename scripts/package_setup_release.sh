@@ -57,5 +57,4 @@ exec bash "${PACKAGER}" \
   --project-dir seeds \
   --project-dir src \
   --project-dir mods \
-  --project-dir launcher_assets \
   "${EXTRA_PROJECT[@]}"
