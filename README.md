@@ -84,12 +84,17 @@ framework + mstan methodology + DuckStation ground truth).
 
 ## Releases
 
-Each release ships **both regions as separate self-contained zips**:
+Each release ships **both regions as separate self-contained zips** for
+**Windows** and **Linux**. All are ready-to-play: the recompiled game code is
+compiled inside the binary — download, unzip, drop your legally owned disc
+image beside it and pick it in the launcher.
 
-| File | Region | Executable | Disc |
-|---|---|---|---|
-| `BloodyRoar2-EU-v0.5.0.zip` | Europe | `BloodyRoar2_Recompiled.exe` | SLES-01722 |
-| `BloodyRoar2-US-v0.5.0.zip` | USA | `BloodyRoar2_Recompiled_USA.exe` | SCUS-94424 |
+| File | OS | Region | Executable | Disc |
+|---|---|---|---|---|
+| `BloodyRoar2-EU-v0.5.0.zip` | Windows | Europe | `BloodyRoar2_Recompiled.exe` | SLES-01722 |
+| `BloodyRoar2-US-v0.5.0.zip` | Windows | USA | `BloodyRoar2_Recompiled_USA.exe` | SCUS-94424 |
+| `BloodyRoar2-EU-Linux-v0.5.0.zip` | Linux | Europe | `BloodyRoar2_Recompiled` | SLES-01722 |
+| `BloodyRoar2-US-Linux-v0.5.0.zip` | Linux | USA | `BloodyRoar2_Recompiled_USA` | SCUS-94424 |
 
 No disc data, retail BIOS or pre-generated C is included — you supply your
 legally owned disc image (see [Copyright](#-copyright--legal)).
@@ -127,10 +132,16 @@ Generate both regions, then build both targets (or just the one you want).
 ### Linux builds
 
 The whole stack is multi-platform (SDL windowing/audio, OpenGL + Vulkan
-renderers, POSIX sockets). CI builds a Linux setup-host on every push —
-see [`.github/workflows/linux-build.yml`](.github/workflows/linux-build.yml)
-(`br2-<version>-linux-x64` artifact). Building the game executable on Linux
-uses the same flow as above; deps on Debian/Ubuntu:
+renderers, POSIX sockets). Two Linux CI workflows:
+
+- [`.github/workflows/linux-build.yml`](.github/workflows/linux-build.yml) —
+  builds a Linux **setup-host** (launcher + Generate & rebuild) on every push.
+- [`.github/workflows/linux-full-build.yml`](.github/workflows/linux-full-build.yml)
+  — builds the full **ready-to-play** Linux binaries (the release zips above)
+  from the game's generated C, injected from a private repo secret.
+
+Building the game executable on Linux uses the same flow as the dev quick
+start; deps on Debian/Ubuntu:
 
 ```bash
 sudo apt install build-essential cmake ninja-build pkg-config \
@@ -140,7 +151,8 @@ cmake --build build-linux --target psx-runtime psx-runtime-us
 ```
 
 CI never ships game C — the recompiled game code is generated locally by each
-player from their legally owned disc.
+player from their legally owned disc (the full-build workflow injects it from
+the private `generated` repo only at build time).
 
 ### Folder structure
 
