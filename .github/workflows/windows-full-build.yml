@@ -156,6 +156,8 @@ jobs:
           PSXRECOMP_BIOS_BUILD: ../build-recompiler
         run: |
           set -euo pipefail
+          MINGW_BIN="$(dirname "$(command -v gcc)")"
+          export PATH="${MINGW_BIN}:${PATH}"
           bash psxrecomp/tools/regen_bios.sh --config bios/OpenBIOS.toml
           test -f psxrecomp/generated/OpenBIOS_full.c
           test -f psxrecomp/generated/OpenBIOS_dispatch.c
