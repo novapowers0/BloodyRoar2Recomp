@@ -50,7 +50,6 @@ jobs:
             mingw-w64-x86_64-ninja
             mingw-w64-x86_64-pkgconf
             mingw-w64-x86_64-vulkan-headers
-            mingw-w64-x86_64-shaderc
             mingw-w64-x86_64-python
             curl
             zip
@@ -166,34 +165,21 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ -x /mingw64/bin/glslc.exe ]]; then
-            GLSLC_BIN=/mingw64/bin/glslc.exe
-          else
-          GLSLC_BIN="/mingw64/bin/glslc.exe"
-          if [[ ! -f "${GLSLC_BIN}" ]]; then
-            GLSLC_BIN="$(command -v glslc.exe || command -v glslc || true)"
-          fi
-          fi
-          if [[ -z "${GLSLC_BIN}" ]]; then
-            echo "::error::glslc was not installed (MSYS2 package mingw-w64-x86_64-shaderc)"
+          VK_HEADER="$(find /c/VulkanSDK -path '*/Include/vulkan/vulkan.h' -print -quit 2>/dev/null || true)"
+          if [[ -z "${VK_HEADER}" ]]; then
+            echo "::error::Vulkan SDK headers are unavailable on this Windows runner"
             exit 1
           fi
-          GLSLC="$(cygpath -am "${GLSLC_BIN}")"
-          GLSLC_POSIX="$(cygpath -u "${GLSLC}")"
-          MINGW_PREFIX="$(dirname "$(dirname "${GLSLC_POSIX}")")"
-          export VULKAN_SDK="$(cygpath -am "${MINGW_PREFIX}")"
-          VK_HEADERS="${VULKAN_SDK}/include"
-          if [[ ! -f "${VULKAN_SDK}/include/vulkan/vulkan.h" ]]; then
-            VK_INCLUDE="$(find /c/VulkanSDK -path '*/Include/vulkan/vulkan.h' -print -quit 2>/dev/null || true)"
-            if [[ -n "${VK_INCLUDE}" ]]; then
-              VK_INCLUDE_POSIX="$(cygpath -u "${VK_INCLUDE}")"
-              VK_ROOT="$(dirname "$(dirname "${VK_INCLUDE_POSIX}")")"
-              export VULKAN_SDK="$(cygpath -am "${VK_ROOT}")"
-              GLSLC="${VULKAN_SDK}/Bin/glslc.exe"
-              VK_HEADERS="${VULKAN_SDK}/Include"
-            fi
+          VK_INCLUDE_POSIX="$(dirname "$(dirname "${VK_HEADER}")")"
+          VK_ROOT_POSIX="$(dirname "${VK_INCLUDE_POSIX}")"
+          GLSLC_BIN="${VK_ROOT_POSIX}/Bin/glslc.exe"
+          if [[ ! -f "${GLSLC_BIN}" ]]; then
+            echo "::error::Vulkan SDK glslc is missing: ${GLSLC_BIN}"
+            exit 1
           fi
-          echo "Using Vulkan headers under ${VK_HEADERS}"
+          export VULKAN_SDK="$(cygpath -am "${VK_ROOT_POSIX}")"
+          GLSLC="$(cygpath -am "${GLSLC_BIN}")"
+          echo "Using Vulkan SDK ${VULKAN_SDK}"
           EXTRA=(
             "-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}"
             "-DGLSLC_EXE=${GLSLC}"
