@@ -24,7 +24,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for the artifacts (e.g. 0.6.3). Empty = use VERSION file.'
+        description: 'Version for the artifacts (e.g. 0.7.1). Empty = use VERSION file.'
         required: false
         type: string
         default: ''
@@ -132,6 +132,23 @@ jobs:
           done
           echo "universal build: all three region generated C sets present"
 
+      - name: Run synthetic release regression guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in \
+            test_mod_netplay_plan_wiring.py \
+            test_mod_native_vblank_rate_survives_pal.py \
+            test_bios_selection_guards.py \
+            test_recomp_ui_root_override.py \
+            test_launcher_pad_mode_wiring.py \
+            test_launcher_vulkan_option.py \
+            test_mod_catalog_layout.py \
+            test_default_renderer_guards.py \
+            test_vk_build_default.py; do
+            python3 "psxrecomp/runtime/tests/${test}"
+          done
+
       - name: Setup ccache
         uses: hendrikmuhs/ccache-action@v1.2
         with:
@@ -195,8 +212,10 @@ jobs:
           if ldd build-ci/BloodyRoar2_Recompiled | grep -q 'not found'; then
             echo "::error::binary has unresolved shared-library dependencies"; exit 1;
           fi
+          FOUND_STAMP=0
           for d in build-ci build-ci/Release; do
             if [[ -f "${d}/psx_game_version.txt" ]]; then
+              FOUND_STAMP=1
               BUILT="$(tr -d '[:space:]' <"${d}/psx_game_version.txt")"
               BUILT="${BUILT#v}"
               if [[ "${BUILT}" != "${RELEASE_VERSION}" ]]; then
@@ -206,6 +225,10 @@ jobs:
               echo "version pin ok: ${BUILT} (${d})"
             fi
           done
+          if [[ "${FOUND_STAMP}" -ne 1 ]]; then
+            echo "::error::missing psx_game_version.txt after universal build"
+            exit 1
+          fi
 
       - name: Package Linux release zip (ready-to-play)
         shell: bash
@@ -228,6 +251,11 @@ jobs:
           grep -qE '(^|/)BloodyRoar2/bios/openbios\.bin$' "${CONTENTS}"
           grep -qE '(^|/)BloodyRoar2/assets/psxrecomp\.png$' "${CONTENTS}"
           grep -qE '(^|/)BloodyRoar2/mods/bundled/br2\.enhancement\.widescreen/1\.0\.0/manifest\.toml$' "${CONTENTS}"
+          if grep -qiE '(^|/)(generated/.*\.c|.*\.(cue|iso|chd|ecm|mcd|sbi))$' "${CONTENTS}"; then
+            echo "::error::release ZIP includes generated game C, disc data or memory card" >&2
+            grep -iE '(^|/)(generated/.*\.c|.*\.(cue|iso|chd|ecm|mcd|sbi))$' "${CONTENTS}" >&2
+            exit 1
+          fi
           rm -f "${CONTENTS}"
           echo "verified package contents: ${ZIP}"
 

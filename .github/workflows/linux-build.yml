@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version for the artifact (e.g. 0.5.0). Empty = use VERSION file.'
+        description: 'Version for the artifact (e.g. 0.7.1). Empty = use VERSION file.'
         required: false
         type: string
         default: ''
@@ -64,6 +64,23 @@ jobs:
       - name: Record framework revisions
         shell: bash
         run: bash psxrecomp/tools/ci/record_pins.sh
+
+      - name: Run synthetic release regression guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          for test in \
+            test_mod_netplay_plan_wiring.py \
+            test_mod_native_vblank_rate_survives_pal.py \
+            test_bios_selection_guards.py \
+            test_recomp_ui_root_override.py \
+            test_launcher_pad_mode_wiring.py \
+            test_launcher_vulkan_option.py \
+            test_mod_catalog_layout.py \
+            test_default_renderer_guards.py \
+            test_vk_build_default.py; do
+            python3 "psxrecomp/runtime/tests/${test}"
+          done
 
       - name: Setup host mode (no game C / BIOS backends in CI)
         shell: bash

@@ -1,0 +1,246 @@
+# Windows ready-to-play build for Bloody Roar II Recompiled.
+#
+# The generated game C is restored only from a private repository at build
+# time. The public artifact contains the universal executable, OpenBIOS,
+# launcher assets and curated mods, but no disc image or generated source.
+
+name: Windows full build (ready-to-play)
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the artifact (e.g. 0.7.1). Empty = use VERSION file."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: windows-full-build-${{ github.run_id }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: windows-x64 ready-to-play
+    runs-on: windows-2022
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+      - name: Checkout pinned framework and UI
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Install MinGW build dependencies
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: MINGW64
+          update: true
+          install: >-
+            mingw-w64-x86_64-toolchain
+            mingw-w64-x86_64-cmake
+            mingw-w64-x86_64-ninja
+            mingw-w64-x86_64-pkgconf
+            mingw-w64-x86_64-vulkan-headers
+            mingw-w64-x86_64-shaderc
+            mingw-w64-x86_64-python
+            curl
+            zip
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ github.event.inputs.version }}"
+          if [[ -z "${RAW}" ]]; then
+            RAW="$(tr -d '[:space:]' <VERSION)"
+          fi
+          VER="${RAW#v}"
+          if [[ ! "${VER}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-][A-Za-z0-9.+-]*)?$ ]]; then
+            echo "::error::invalid version '${RAW}' (want X.Y.Z or vX.Y.Z)"
+            exit 1
+          fi
+          printf '%s\n' "${VER}" >VERSION
+          echo "version=${VER}" >>"$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=${VER}" >>"$GITHUB_ENV"
+          echo "Using version ${VER}"
+
+      - name: Record framework revisions
+        shell: bash
+        run: bash psxrecomp/tools/ci/record_pins.sh
+
+      - name: Run synthetic release regression guards
+        shell: bash
+        env:
+          PYTHONUTF8: "1"
+        run: |
+          set -euo pipefail
+          for test in \
+            test_mod_netplay_plan_wiring.py \
+            test_mod_native_vblank_rate_survives_pal.py \
+            test_bios_selection_guards.py \
+            test_recomp_ui_root_override.py \
+            test_launcher_pad_mode_wiring.py \
+            test_launcher_vulkan_option.py \
+            test_mod_catalog_layout.py \
+            test_default_renderer_guards.py \
+            test_vk_build_default.py; do
+            python "psxrecomp/runtime/tests/${test}"
+          done
+
+      - name: Cache SDL3 source
+        uses: actions/cache@v4
+        with:
+          path: .cache/sdl3-src
+          key: sdl3-3.4.10-src
+
+      - name: Prefetch SDL3 source
+        shell: bash
+        run: |
+          set -euo pipefail
+          OUT=".cache/sdl3-src"
+          if [[ -f "${OUT}/CMakeLists.txt" ]]; then
+            echo "SDL3 source cache hit"
+          else
+            bash psxrecomp/tools/ci/prefetch_sdl3.sh --out-dir "${OUT}"
+          fi
+          SDL3_ABS="$(cygpath -am "${OUT}")"
+          echo "PSX_SDL3_SOURCE_DIR=${SDL3_ABS}" >>"$GITHUB_ENV"
+
+      - name: Restore generated game C from private repo
+        shell: bash
+        env:
+          GENERATED_REPO: ${{ secrets.GENERATED_REPO }}
+          GENERATED_REPO_PAT: ${{ secrets.GENERATED_REPO_PAT }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${GENERATED_REPO:-}" || -z "${GENERATED_REPO_PAT:-}" ]]; then
+            echo "::error::secrets GENERATED_REPO / GENERATED_REPO_PAT are not set." >&2
+            exit 1
+          fi
+          rm -rf generated
+          git clone --depth 1 \
+            "https://x-access-token:${GENERATED_REPO_PAT}@github.com/${GENERATED_REPO}.git" \
+            generated
+          rm -rf generated/.git
+          for S in SLES_017.22 SCUS_944.24 SLPS_018.42; do
+            test -f "generated/${S}_dispatch.c" || { echo "::error::missing ${S}_dispatch.c"; exit 1; }
+            test -f "generated/${S}_decls.h" || { echo "::error::missing ${S}_decls.h"; exit 1; }
+            N="$(find generated -maxdepth 1 -type f -name "${S}_full_*.c" | wc -l)"
+            test "${N}" -gt 0 || { echo "::error::no ${S} generated C translation units"; exit 1; }
+            echo "${S}: ${N} translation units"
+          done
+
+      - name: Build recompiler emitters
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S psxrecomp/recompiler -B build-recompiler -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPSXRECOMP_ENABLE_CHD=OFF
+          cmake --build build-recompiler --target psxrecomp-game psxrecomp-bios \
+            -j"$(nproc)"
+
+      - name: Generate bundled OpenBIOS backend
+        shell: bash
+        env:
+          PSXRECOMP_BIOS_BUILD: ../build-recompiler
+        run: |
+          set -euo pipefail
+          bash psxrecomp/tools/regen_bios.sh --config bios/OpenBIOS.toml
+          test -f psxrecomp/generated/OpenBIOS_full.c
+          test -f psxrecomp/generated/OpenBIOS_dispatch.c
+
+      - name: Configure universal runtime
+        shell: bash
+        env:
+          VULKAN_SDK: /mingw64
+        run: |
+          set -euo pipefail
+          EXTRA=(
+            "-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}"
+            "-DGLSLC_EXE=$(command -v glslc)"
+          )
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPSX_SETUP_WIZARD=ON \
+            -DPSX_GAME_VERSION="${RELEASE_VERSION}" \
+            -DBR2_BUILD_UNIVERSAL=ON \
+            "${EXTRA[@]}" 2>&1 | tee build-ci-configure.log
+          if ! grep -q 'Vulkan backend: headers' build-ci-configure.log; then
+            echo "::error::CMake did not enable PSX_HAVE_VULKAN"
+            exit 1
+          fi
+
+      - name: Build universal Windows executable
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake --build build-ci --target psx-runtime-universal -j"$(nproc)"
+          test -f build-ci/BloodyRoar2_Recompiled.exe
+          STAMP="build-ci/psx_game_version.txt"
+          if [[ ! -f "${STAMP}" ]]; then
+            echo "::error::missing game-version stamp next to universal runtime"
+            exit 1
+          fi
+          BUILT="$(tr -d '[:space:]' <"${STAMP}")"
+          BUILT="${BUILT#v}"
+          if [[ "${BUILT}" != "${RELEASE_VERSION}" ]]; then
+            echo "::error::version pin ${BUILT} != ${RELEASE_VERSION} (${STAMP})"
+            exit 1
+          fi
+          echo "version pin ok: ${BUILT} (${STAMP})"
+
+      - name: Package Windows release zip
+        shell: powershell
+        run: ./scripts/package_release.ps1 -Build build-ci
+
+      - name: Verify Windows release package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="dist/BloodyRoar2-v${RELEASE_VERSION}.zip"
+          test -f "${ZIP}" || { echo "::error::missing ${ZIP}"; exit 1; }
+          python - "${ZIP}" <<'PY'
+          import sys
+          import zipfile
+
+          archive = zipfile.ZipFile(sys.argv[1])
+          names = set(archive.namelist())
+          required = {
+              "BloodyRoar2/BloodyRoar2_Recompiled.exe",
+              "BloodyRoar2/game.toml",
+              "BloodyRoar2/bios/openbios.bin",
+              "BloodyRoar2/assets/psxrecomp.png",
+              "BloodyRoar2/mods/bundled/br2.enhancement.widescreen/1.0.0/manifest.toml",
+          }
+          missing = sorted(required - names)
+          if missing:
+              raise SystemExit("missing package entries: " + ", ".join(missing))
+          forbidden_suffixes = (".cue", ".iso", ".chd", ".ecm", ".mcd", ".sbi")
+          forbidden = sorted(
+              name for name in names
+              if name.lower().endswith(forbidden_suffixes)
+              or ("/generated/" in name.lower() and name.lower().endswith(".c"))
+          )
+          if forbidden:
+              raise SystemExit("forbidden disc/generated payload: " + ", ".join(forbidden))
+          print(f"verified package contents: {sys.argv[1]}")
+          PY
+
+      - name: Upload Windows artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: br2-windows-ready-to-play
+          path: dist/BloodyRoar2-v${{ steps.version.outputs.version }}.zip
+          if-no-files-found: error
+          retention-days: 30

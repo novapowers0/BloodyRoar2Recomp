@@ -25,7 +25,7 @@ into a standalone executable — this is a real PC port, not an emulator.
 
 1. **Grab a release** — download the zip for your OS from
    [Releases](https://github.com/novapowers0/BloodyRoar2Recomp/releases/latest)
-   (Windows `BloodyRoar2-v0.7.0.zip` or the `BloodyRoar2-linux-x64-0.7.0.zip` variant).
+   (Windows `BloodyRoar2-v0.7.1.zip` or the `BloodyRoar2-linux-x64-0.7.1.zip` variant).
 2. **Unzip anywhere** — each zip is self-contained (executable, OpenBIOS,
    launcher assets and mods included).
 3. **Add your disc image** — put your legally owned *Bloody Roar II* `.bin`/`.cue`
@@ -144,14 +144,23 @@ disc image beside it and pick it in the launcher.
 
 | Zip | OS | Regions | Executable |
 |---|---|---|---|
-| `BloodyRoar2-v0.7.0.zip` | Windows | EU + USA (+ Japan exp.) | `BloodyRoar2_Recompiled.exe` |
-| `BloodyRoar2-linux-x64-0.7.0.zip` | **Linux** | EU + USA (+ Japan exp.) | `BloodyRoar2_Recompiled` |
+| `BloodyRoar2-v0.7.1.zip` | Windows | EU + USA (+ Japan exp.) | `BloodyRoar2_Recompiled.exe` |
+| `BloodyRoar2-linux-x64-0.7.1.zip` | **Linux** | EU + USA (+ Japan exp.) | `BloodyRoar2_Recompiled` |
 
 > On Linux, `chmod +x BloodyRoar2_Recompiled` and run it — the zip drops the
 > `.exe` extension.
 
 No disc data, retail BIOS or pre-generated C is included — you supply your
 legally owned disc image (see [Copyright](#-copyright--legal)).
+
+### v0.7.1 preparation
+
+The release candidate updates the shared `recomp-ui` launcher and refreshes the
+Windows/Linux release build and package checks. `psxrecomp` remains pinned to
+the newest revision that retains this title's universal-region, curated-mod and
+netplay integrations; upstream `master` currently removes those title APIs.
+Both full-build workflows create testable, version-stamped artifacts before
+publishing.
 
 ---
 
@@ -240,6 +249,9 @@ Submodule gitlinks (`psxrecomp`, `recomp-ui`, nested `recomp-net`) are
 authoritative. `framework_pins.txt` is an optional scaffold snapshot; release CI
 logs SHAs with `record_pins.sh` but builds whatever the gitlinks resolve to.
 Bump submodules deliberately — do not float on `main`/`master` in release CI.
+The `recomp-ui` gitlink is updated to `b688ca79109bc3cc30a6f9de66d81ea70f0acf81`;
+`psxrecomp` stays on compatible `nova-mods` commit
+`219a3627f817c5ad60b852d368c1bebc4f584b71`.
 
 ---
 

@@ -34,6 +34,19 @@ if (-not (Test-Path $Build)) {
     Write-Error "$Build not found. Build first: cmake --build build-universal --target psx-runtime-universal"
 }
 
+$ExePath = Join-Path $Build "BloodyRoar2_Recompiled.exe"
+if (-not (Test-Path $ExePath)) {
+    Write-Error "Universal executable not found: $ExePath"
+}
+$VersionStamp = Join-Path (Split-Path -Parent $ExePath) "psx_game_version.txt"
+if (-not (Test-Path $VersionStamp)) {
+    Write-Error "Missing game-version stamp beside the executable: $VersionStamp"
+}
+$BuiltVersion = (Get-Content -Raw $VersionStamp).Trim().TrimStart("v")
+if ($BuiltVersion -ne $Version) {
+    Write-Error "VERSION ($Version) does not match executable stamp ($BuiltVersion). Reconfigure with -DPSX_GAME_VERSION=$Version and rebuild."
+}
+
 function Copy-Tree($src, $dst) {
     # Copy the CONTENTS of $src into $dst (no extra nesting level).
     if (Test-Path $src) {

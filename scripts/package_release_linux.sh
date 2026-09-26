@@ -29,6 +29,24 @@ if [[ ! -d "${BUILD_DIR}" ]]; then
 fi
 BUILD_DIR="$(cd "${BUILD_DIR}" && pwd)"
 
+EXE_PATH="${BUILD_DIR}/BloodyRoar2_Recompiled"
+VERSION_STAMP="${BUILD_DIR}/psx_game_version.txt"
+if [[ ! -f "${EXE_PATH}" ]]; then
+  echo "error: universal executable not found: ${EXE_PATH}" >&2
+  exit 1
+fi
+if [[ ! -f "${VERSION_STAMP}" ]]; then
+  echo "error: missing game-version stamp beside executable: ${VERSION_STAMP}" >&2
+  exit 1
+fi
+BUILT_VERSION="$(tr -d '[:space:]' <"${VERSION_STAMP}")"
+BUILT_VERSION="${BUILT_VERSION#v}"
+if [[ "${BUILT_VERSION}" != "${VERSION}" ]]; then
+  echo "error: requested version ${VERSION} does not match executable stamp ${BUILT_VERSION}" >&2
+  echo "  Reconfigure with -DPSX_GAME_VERSION=${VERSION} and rebuild." >&2
+  exit 1
+fi
+
 # Resolve an EU/US region config from the build dir or project root.
 pick() { # pick <var> <file>
   local var="$1" file="$2"
