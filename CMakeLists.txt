@@ -75,6 +75,7 @@ psxrecomp_add_game_runtime(psx-runtime
     APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/psxrecomp.ico"
     PRELOADED_MODS_DIR "${_BR2_PRELOADED}"
     EXTRAS_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/compat/psxrecomp_vulkan_stub_compat.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_widescreen_plugin.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_enhancement_plugin.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_unlock_plugin.c"
@@ -101,6 +102,7 @@ psxrecomp_add_game_runtime(psx-runtime-us
     APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/psxrecomp.ico"
     PRELOADED_MODS_DIR "${_BR2_PRELOADED}"
     EXTRAS_SOURCES
+        "${CMAKE_CURRENT_SOURCE_DIR}/src/compat/psxrecomp_vulkan_stub_compat.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_widescreen_plugin.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_enhancement_plugin.c"
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_unlock_plugin.c"
@@ -125,6 +127,7 @@ if(BR2_BUILD_JAPAN)
         APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/psxrecomp.ico"
         PRELOADED_MODS_DIR "${_BR2_PRELOADED}"
         EXTRAS_SOURCES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/compat/psxrecomp_vulkan_stub_compat.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_widescreen_plugin.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_enhancement_plugin.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_unlock_plugin.c"
@@ -158,6 +161,7 @@ if(BR2_BUILD_UNIVERSAL)
         APP_ICON "${CMAKE_CURRENT_SOURCE_DIR}/assets/psxrecomp.ico"
         PRELOADED_MODS_DIR "${_BR2_PRELOADED}"
         EXTRAS_SOURCES
+            "${CMAKE_CURRENT_SOURCE_DIR}/src/compat/psxrecomp_vulkan_stub_compat.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_widescreen_plugin.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_enhancement_plugin.c"
             "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_unlock_plugin.c"
