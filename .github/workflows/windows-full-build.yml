@@ -169,7 +169,10 @@ jobs:
           if [[ -x /mingw64/bin/glslc.exe ]]; then
             GLSLC_BIN=/mingw64/bin/glslc.exe
           else
+          GLSLC_BIN="/mingw64/bin/glslc.exe"
+          if [[ ! -f "${GLSLC_BIN}" ]]; then
             GLSLC_BIN="$(command -v glslc.exe || command -v glslc || true)"
+          fi
           fi
           if [[ -z "${GLSLC_BIN}" ]]; then
             echo "::error::glslc was not installed (MSYS2 package mingw-w64-x86_64-shaderc)"
