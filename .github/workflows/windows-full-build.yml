@@ -164,13 +164,21 @@ jobs:
 
       - name: Configure universal runtime
         shell: bash
-        env:
-          VULKAN_SDK: /mingw64
         run: |
           set -euo pipefail
+          GLSLC_BIN="$(command -v glslc.exe || command -v glslc || true)"
+          if [[ -z "${GLSLC_BIN}" ]]; then
+            echo "::error::glslc was not installed (MSYS2 package mingw-w64-x86_64-shaderc)"
+            exit 1
+          fi
+          GLSLC="$(cygpath -am "${GLSLC_BIN}")"
+          GLSLC_POSIX="$(cygpath -u "${GLSLC}")"
+          MINGW_PREFIX="$(dirname "$(dirname "${GLSLC_POSIX}")")"
+          export VULKAN_SDK="$(cygpath -am "${MINGW_PREFIX}")"
+          echo "Using Vulkan headers under ${VULKAN_SDK}/include"
           EXTRA=(
             "-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}"
-            "-DGLSLC_EXE=$(command -v glslc)"
+            "-DGLSLC_EXE=${GLSLC}"
           )
           cmake -S . -B build-ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
@@ -178,8 +186,9 @@ jobs:
             -DPSX_GAME_VERSION="${RELEASE_VERSION}" \
             -DBR2_BUILD_UNIVERSAL=ON \
             "${EXTRA[@]}" 2>&1 | tee build-ci-configure.log
-          if ! grep -q 'Vulkan backend: headers' build-ci-configure.log; then
-            echo "::error::CMake did not enable PSX_HAVE_VULKAN"
+          if ! grep -q 'Vulkan backend: headers ' build-ci-configure.log; then
+            echo "::error::CMake did not enable the Vulkan backend; configure diagnostics:"
+            grep -iE 'vulkan|glslc|shaderc' build-ci-configure.log || true
             exit 1
           fi
 
