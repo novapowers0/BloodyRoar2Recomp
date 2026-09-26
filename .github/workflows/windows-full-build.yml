@@ -162,27 +162,25 @@ jobs:
           test -f psxrecomp/generated/OpenBIOS_dispatch.c
 
       - name: Configure universal runtime
-        shell: bash
+        shell: msys2 {0}
+        env:
+          VULKAN_SDK: /mingw64
         run: |
           set -euo pipefail
-          VK_HEADER="$(find /c/VulkanSDK -path '*/Include/vulkan/vulkan.h' -print -quit 2>/dev/null || true)"
-          if [[ -z "${VK_HEADER}" ]]; then
-            echo "::error::Vulkan SDK headers are unavailable on this Windows runner"
+          if [[ ! -f /mingw64/include/vulkan/vulkan.h ]]; then
+            echo "::error::MSYS2 Vulkan headers are missing: /mingw64/include/vulkan/vulkan.h"
             exit 1
           fi
-          VK_INCLUDE_POSIX="$(dirname "$(dirname "${VK_HEADER}")")"
-          VK_ROOT_POSIX="$(dirname "${VK_INCLUDE_POSIX}")"
-          GLSLC_BIN="${VK_ROOT_POSIX}/Bin/glslc.exe"
+          GLSLC_BIN=/mingw64/bin/glslc.exe
           if [[ ! -f "${GLSLC_BIN}" ]]; then
-            echo "::error::Vulkan SDK glslc is missing: ${GLSLC_BIN}"
+            echo "::error::MSYS2 shader compiler is missing: ${GLSLC_BIN}"
             exit 1
           fi
-          export VULKAN_SDK="$(cygpath -am "${VK_ROOT_POSIX}")"
           GLSLC="$(cygpath -am "${GLSLC_BIN}")"
-          echo "Using Vulkan SDK ${VULKAN_SDK}"
           EXTRA=(
             "-DFETCHCONTENT_SOURCE_DIR_SDL3=${PSX_SDL3_SOURCE_DIR}"
             "-DGLSLC_EXE=${GLSLC}"
+            "-DVulkan_INCLUDE_DIR=/mingw64/include"
           )
           cmake -S . -B build-ci -G Ninja \
             -DCMAKE_BUILD_TYPE=Release \
