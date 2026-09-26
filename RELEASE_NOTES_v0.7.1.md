@@ -17,4 +17,6 @@
 
 The full Windows and Linux workflows produce build artifacts for validation.
 Publish the release only after both artifacts have passed their platform checks.
+The Windows artifact uses the OpenGL default renderer; the Linux artifact also
+includes the optional Vulkan backend.
 Japan/Asia remains experimental; EU and USA remain the supported regions.
