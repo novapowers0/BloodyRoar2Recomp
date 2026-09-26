@@ -179,7 +179,7 @@ jobs:
           fi
 
       - name: Build universal Windows executable
-        shell: bash
+        shell: msys2 {0}
         run: |
           set -euo pipefail
           cmake --build build-ci --target psx-runtime-universal -j"$(nproc)"
