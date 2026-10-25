@@ -53,6 +53,7 @@ exec bash "${PACKAGER}" \
   --project-file VERSION \
   --project-file codegen_setup.c \
   --project-file codegen_setup.h \
+  --project-file codegen_setup_us.c \
   --project-file codegen_setup_japan.c \
   --project-file game_japan.toml \
   --project-file catalog_identity_japan.json \

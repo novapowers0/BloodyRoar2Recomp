@@ -222,6 +222,51 @@ CI never ships game C — the recompiled game code is generated locally by each
 player from their legally owned disc (the full-build workflow injects it from
 the private `generated` repo only at build time).
 
+### macOS builds
+
+The stack builds natively on macOS (Apple Silicon and Intel) with Apple clang
+and SDL3; OpenGL is the default renderer (there is no Vulkan SDK, so the Vulkan
+backend compiles as an inert stub and a Vulkan request falls back with a
+message). One workflow proves it:
+
+- [`.github/workflows/macos-build.yml`](.github/workflows/macos-build.yml) —
+  builds the macOS **setup-host** (launcher + Generate & rebuild) on every push
+  and uploads `br2-<version>-macos-arm64.zip`.
+
+```bash
+xcode-select --install
+brew install cmake ninja python3
+
+scripts/build_macos.sh            # build-macos/BloodyRoar2_Recompiled (setup host)
+scripts/build_macos.sh --usa      # USA target: BloodyRoar2_Recompiled_USA
+scripts/build_macos.sh --full     # universal EU+USA+JP (needs generated/ C)
+```
+
+`scripts/package_macos_app.sh` wraps a built executable into a double-clickable
+`.app` (`dist/Bloody Roar II Recompiled (USA).app`). Two things make that more
+than cosmetics: a bare binary inherits its TCC identity from the terminal that
+launched it, so Input Monitoring (needed for HID input and for controller
+rumble) has to be granted per terminal — a bundle gets the grant once, for the
+game; and the launcher resolves its own art/fonts through `SDL_GetBasePath()`,
+which returns `Contents/Resources` for a bundle, so the packager symlinks
+`Contents/Resources/assets -> ../MacOS/assets` (the runtime anchors its sidecars
+to the executable, in `Contents/MacOS`).
+
+Each region's setup wizard points at its own config: `codegen_setup.c` for EU
+(`game.toml`) and `codegen_setup_us.c` for USA (`game_us.toml`). Before that
+split, the USA exe carried the EU-pinned wizard, so first-run setup was forced
+on every launch and then rejected the US disc as the wrong dump.
+
+`build_macos.sh` builds the recompiler emitters and the bundled OpenBIOS C when
+missing, then configures and builds the runtime. SDL3, zlib, libchdr and
+libjuice are downloaded by CMake and SHA256-verified against
+`psxrecomp/third_party/deps.manifest` — no Homebrew SDL3 is needed, and the
+pinned static build also removes `libSDL3` from the binary's runtime
+dependencies.
+
+Like Linux, CI never ships game C: run the setup host, point it at your legally
+owned disc, and **Generate & rebuild** compiles the game locally.
+
 ### Folder structure
 
 ```text

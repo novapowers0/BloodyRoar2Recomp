@@ -1,0 +1,181 @@
+# macOS build (setup-host) for Bloody Roar II Recompiled.
+#
+# CI never ships game C: the recompiled game code is generated locally by each
+# player from their legally owned disc (see Copyright in README). This workflow
+# proves the whole toolchain (recompiler + runtime + recomp-ui + mods) compiles
+# on macOS arm64 and uploads the `br2-<version>-macos-arm64` setup zip
+# (launcher + Generate & rebuild wizard) as a build artifact.
+#
+# Based on .github/workflows/linux-build.yml. Differences:
+#   - Vulkan is not asserted: there is no Vulkan SDK on the runner, so the
+#     renderer builds as an inert stub and the runtime uses its OpenGL default.
+#     A Vulkan request is refused with a message (see main.cpp).
+#   - SDL3 is not a brew dependency: CMake fetches the SHA256-pinned release
+#     (PSX_SDL3_FETCH) and links it statically.
+
+name: macOS build
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version for the artifact (e.g. 0.7.1). Empty = use VERSION file."
+        required: false
+        type: string
+        default: ""
+
+concurrency:
+  group: macos-build-${{ github.ref }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  CMAKE_BUILD_TYPE: Release
+
+jobs:
+  build:
+    name: macos-arm64
+    runs-on: macos-14
+    steps:
+      - name: Checkout (submodules are the framework pin)
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          fetch-depth: 1
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          RAW="${{ github.event.inputs.version }}"
+          if [[ -z "${RAW}" ]]; then
+            RAW="$(tr -d '[:space:]' <VERSION)"
+          fi
+          VER="${RAW#v}"
+          if [[ ! "${VER}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.+-][A-Za-z0-9.+-]*)?$ ]]; then
+            echo "::error::invalid version '${RAW}' (want X.Y.Z or vX.Y.Z)"
+            exit 1
+          fi
+          printf '%s\n' "${VER}" >VERSION
+          echo "version=${VER}" >>"$GITHUB_OUTPUT"
+          echo "RELEASE_VERSION=${VER}" >>"$GITHUB_ENV"
+          echo "Using version ${VER}"
+
+      - name: Record framework revisions
+        shell: bash
+        run: bash psxrecomp/tools/ci/record_pins.sh
+
+      - name: Setup host mode (no game C / BIOS backends in CI)
+        shell: bash
+        run: bash psxrecomp/tools/ci/clear_generated.sh
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          # cmake and ninja are preinstalled on the macOS runner image; brew is
+          # a no-op then and a repair otherwise.
+          brew install cmake ninja
+          cmake --version | head -n1
+          ninja --version
+          python3 --version
+
+      - name: Build recompiler tools (emitters)
+        uses: ./psxrecomp/.github/actions/build-emitters
+
+      - name: Configure & build setup host
+        shell: bash
+        run: |
+          set -euo pipefail
+          cmake -S . -B build-ci -G Ninja \
+            -DCMAKE_BUILD_TYPE=Release \
+            -DPSXRECOMP_FORCE_SETUP_HOST=ON \
+            -DPSXRECOMP_ALLOW_NO_BIOS=ON \
+            -DPSX_SETUP_WIZARD=ON \
+            -DPSX_GAME_VERSION="${RELEASE_VERSION}" \
+            -DCMAKE_DISABLE_FIND_PACKAGE_SDL3=ON \
+            -DPSX_SDL3_FETCH=ON \
+            2>&1 | tee build-ci-configure.log
+          if ! grep -q 'SDL backend = SDL3' build-ci-configure.log; then
+            echo "::error::CMake did not select the SDL3 backend (see configure log)"
+            exit 1
+          fi
+          cmake --build build-ci --target psx-runtime -j"$(sysctl -n hw.ncpu)"
+
+      - name: Verify version pin
+        shell: bash
+        run: |
+          set -euo pipefail
+          STAMP="$(find build-ci -name psx_game_version.txt -type f | head -n1)"
+          if [[ -z "${STAMP}" || ! -f "${STAMP}" ]]; then
+            echo "::error::missing psx_game_version.txt after build"
+            exit 1
+          fi
+          BUILT="$(tr -d '[:space:]' <"${STAMP}")"
+          BUILT="${BUILT#v}"
+          if [[ "${BUILT}" != "${RELEASE_VERSION}" ]]; then
+            echo "::error::version pin ${BUILT} != ${RELEASE_VERSION} (${STAMP})"
+            exit 1
+          fi
+          echo "lobby pin ok: ${BUILT} (${STAMP})"
+
+      - name: Smoke test (headless)
+        shell: bash
+        run: |
+          set -euo pipefail
+          # The setup host has no game C and no disc: a headless launch must
+          # exit cleanly after asking for the disc, not crash or hang.
+          OUT="$(mktemp)"
+          trap 'rm -f "${OUT}"' EXIT
+          perl -e 'alarm 120; exec @ARGV' \
+            ./build-ci/BloodyRoar2_Recompiled --headless >"${OUT}" 2>&1 || true
+          sed -n '1,20p' "${OUT}"
+          if ! grep -q 'game disc image needed' "${OUT}"; then
+            echo "::error::headless setup host did not reach the disc prompt"
+            exit 1
+          fi
+
+      - name: Package setup zip (macos-arm64)
+        shell: bash
+        run: |
+          set -euo pipefail
+          chmod +x scripts/package_setup_release.sh
+          export RELEASE_VERSION
+          scripts/package_setup_release.sh build-ci macos-arm64 build-recompiler
+          ls -la dist/
+
+      - name: Verify setup package contents
+        shell: bash
+        run: |
+          set -euo pipefail
+          ZIP="$(find dist -maxdepth 1 -type f -name 'br2-*-macos-arm64.zip' -print -quit)"
+          test -n "${ZIP}" || { echo "::error::setup zip was not produced"; exit 1; }
+          CONTENTS="$(mktemp)"
+          trap 'rm -f "${CONTENTS}"' EXIT
+          unzip -Z1 "${ZIP}" >"${CONTENTS}"
+          require_entry() {
+            if ! grep -qE "$1" "${CONTENTS}"; then
+              echo "::error::setup ZIP is missing required entry: $2"
+              exit 1
+            fi
+          }
+          require_entry '(^|/)BloodyRoar2_Recompiled$' 'BloodyRoar2_Recompiled'
+          require_entry '(^|/)assets/psxrecomp\.ico$' 'assets/psxrecomp.ico'
+          require_entry '(^|/)CMakeLists\.txt$' 'CMakeLists.txt'
+          require_entry '(^|/)psxrecomp/' 'psxrecomp/'
+          require_entry '(^|/)recomp-ui/' 'recomp-ui/'
+          echo "setup package contents verified: ${ZIP}"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: br2-macos-arm64
+          path: dist/br2-*-macos-arm64.zip
+          if-no-files-found: error
+          retention-days: 30

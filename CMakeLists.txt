@@ -109,7 +109,10 @@ psxrecomp_add_game_runtime(psx-runtime-us
         "${CMAKE_CURRENT_SOURCE_DIR}/src/mods/br2_turbo_plugin.c"
     GEN_MARKER "generated/SCUS_944.24_dispatch.c"
     GEN_FULL_GLOB "generated/SCUS_944.24_full_*.c"
-    CODEGEN_SETUP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/codegen_setup.c"
+    # Region-specific setup config: codegen_setup.c is pinned to game.toml and
+    # generated/SLES_017.22_dispatch.c, so reusing it here forced first-run setup
+    # on a USA-only tree and then rejected the US disc ("wrong dump").
+    CODEGEN_SETUP_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/codegen_setup_us.c"
 )
 
 target_compile_definitions(psx-runtime-us PRIVATE PSX_GAME_BACKEND_REGISTRY=1)
